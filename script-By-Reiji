@@ -1,0 +1,18 @@
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/turtle"))()
+
+local OwO = library:Window("By Reiji")
+
+OwO:Button("CopyCframe", function()
+setclipboard(tostring(game.Players.LocalPlayer.Character.HumanoidRootPart.Position))
+end)
+OwO:Button("FlyGui", function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Reiji0001/Fly-Gui/main/Fly-Gui_Source"))()
+end)
+OwO:Button("Infinity Yield", function()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+end)
+OwO:Button("ESP", function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Reiji0001/Esp/main/EspSource"))()
+end)
+Owo:Button("DarkDexV4",function()
+loadstring(game:HttGet('https://gist.githubusercontent.com/DinosaurXxX/b757fe011e7e600c0873f967fe427dc2/raw/ee5324771f017073fc30e640323ac2a9b3bfc550/dark%2520dex%2520v4'))()
