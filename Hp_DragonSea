@@ -1,9 +1,0 @@
-_G.ConCac = state
-end)
-
-if _G.ConCac then
-repeat wait()
-
-game:GetService("Players").LocalPlayer.Backpack.Golden.Transform.Fire:FireServer(game:GetService("Players").LocalPlayer)
-until _G.ConCac == false
-end
