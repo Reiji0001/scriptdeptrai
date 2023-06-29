@@ -115,7 +115,7 @@ _G.Key_KeyPass = "1"
             Box.Text = ""
             Box.TextColor3 = Color3.fromRGB(255, 255, 0)
             Box.Text = "Success Key !"
-            loadstring(game:HttpGet(""))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Reiji0001/scriptdeptrai/main/Raid_DragonSea"))()
             local SysemKey = game.CoreGui:FindFirstChild("LoadUi")
             Key:TweenSize(UDim2.new(0,1,0,1),"Out","Quad",1,true)
             wait(.2)
