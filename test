@@ -1,0 +1,752 @@
+-- 1 file: Combat (Kill Aura, Wall Combo, Hitbox, Fly, Auto Block, Dash CD) + Utility (Auto Farm, Emote Spam)  
+-- KFC HUB FULL (Merged from user's original code)  
+-- UI: dark, rounded, 2 tabs, minimize, small open button. Dash cooldown adjustable via TextBox (0-100).  
+  
+-- Services & basic  
+local Players = game:GetService("Players")  
+local RS = game:GetService("ReplicatedStorage")  
+local RunService = game:GetService("RunService")  
+local UserInputService = game:GetService("UserInputService")  
+local localPlayer = Players.LocalPlayer  
+  
+-- try require core (some functions depend on it)  
+local core = nil  
+pcall(function()  
+    core = require(RS:WaitForChild("Core"))  
+end)  
+  
+-- ---------- Main GUI ----------  
+local screenGui = Instance.new("ScreenGui", localPlayer:WaitForChild("PlayerGui"))  
+screenGui.Name = "KFC_HUB_FULL"  
+screenGui.ResetOnSpawn = false  
+screenGui.IgnoreGuiInset = true  
+  
+local mainFrame = Instance.new("Frame", screenGui)  
+mainFrame.Size = UDim2.new(0,440,0,360)  
+mainFrame.Position = UDim2.new(0.5,-220,0.35,-180)  
+mainFrame.BackgroundColor3 = Color3.fromRGB(26,26,26)  
+mainFrame.Active = true  
+mainFrame.Draggable = true  
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,8)  
+  
+-- Header  
+local header = Instance.new("Frame", mainFrame)  
+header.Size = UDim2.new(1,0,0,36)  
+header.Position = UDim2.new(0,0,0,0)  
+header.BackgroundColor3 = Color3.fromRGB(40,40,40)  
+Instance.new("UICorner", header).CornerRadius = UDim.new(0,6)  
+  
+local title = Instance.new("TextLabel", header)  
+title.Size = UDim2.new(1,-110,1,0)  
+title.Position = UDim2.new(0,12,0,0)  
+title.BackgroundTransparency = 1  
+title.Text = " KZ HUB | V8 AURA FIXED"  
+title.TextColor3 = Color3.fromRGB(255,255,255)  
+title.TextXAlignment = Enum.TextXAlignment.Left  
+title.Font = Enum.Font.GothamBold  
+title.TextSize = 15  
+  
+-- Minimize / Close  
+local minimizeBtn = Instance.new("TextButton", header)  
+minimizeBtn.Size = UDim2.new(0,34,0,28)  
+minimizeBtn.Position = UDim2.new(1,-82,0,4)  
+minimizeBtn.Text = "—"  
+minimizeBtn.Font = Enum.Font.GothamBold  
+minimizeBtn.TextSize = 18  
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(180,50,50)  
+minimizeBtn.TextColor3 = Color3.fromRGB(255,255,255)  
+Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0,6)  
+  
+local closeBtn = Instance.new("TextButton", header)  
+closeBtn.Size = UDim2.new(0,34,0,28)  
+closeBtn.Position = UDim2.new(1,-42,0,4)  
+closeBtn.Text = "X"  
+closeBtn.Font = Enum.Font.GothamBold  
+closeBtn.TextSize = 16  
+closeBtn.BackgroundColor3 = Color3.fromRGB(150,0,0)  
+closeBtn.TextColor3 = Color3.fromRGB(255,255,255)  
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,6)  
+  
+-- small open button after minimize  
+local openSmall = Instance.new("TextButton", screenGui)  
+openSmall.Size = UDim2.new(0,90,0,34)  
+openSmall.Position = UDim2.new(0,12,0,12)  
+openSmall.Text = "KFC HUB"  
+openSmall.Visible = false  
+openSmall.BackgroundColor3 = Color3.fromRGB(50,150,50)  
+openSmall.TextColor3 = Color3.fromRGB(255,255,255)  
+Instance.new("UICorner", openSmall).CornerRadius = UDim.new(0,6)  
+  
+minimizeBtn.MouseButton1Click:Connect(function()  
+    mainFrame.Visible = false  
+    openSmall.Visible = true  
+end)  
+openSmall.MouseButton1Click:Connect(function()  
+    mainFrame.Visible = true  
+    openSmall.Visible = false  
+end)  
+closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)  
+  
+-- Tabs  
+local tabsFrame = Instance.new("Frame", mainFrame)  
+tabsFrame.Size = UDim2.new(1,-20,0,36)  
+tabsFrame.Position = UDim2.new(0,10,0,44)  
+tabsFrame.BackgroundTransparency = 1  
+  
+local function makeTabBtn(text, posX)  
+    local b = Instance.new("TextButton", tabsFrame)  
+    b.Size = UDim2.new(0.5,-12,1,0)  
+    b.Position = UDim2.new(posX,6,0,0)  
+    b.Text = text  
+    b.BackgroundColor3 = Color3.fromRGB(36,36,36)  
+    b.TextColor3 = Color3.fromRGB(200,200,200)  
+    b.Font = Enum.Font.Gotham  
+    b.TextSize = 14  
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)  
+    return b  
+end  
+  
+local tabCombatBtn = makeTabBtn("Combat", 0)  
+local tabUtilBtn = makeTabBtn("Utility", 0.5)  
+  
+-- Content area  
+local contentFrame = Instance.new("Frame", mainFrame)  
+contentFrame.Size = UDim2.new(1,-20,1,-96)  
+contentFrame.Position = UDim2.new(0,10,0,84)  
+contentFrame.BackgroundTransparency = 1  
+  
+local combatFrame = Instance.new("ScrollingFrame", contentFrame)  
+combatFrame.Size = UDim2.new(1,0,1,0)  
+combatFrame.CanvasSize = UDim2.new(0,0,2,0) -- allow vertical scroll  
+combatFrame.ScrollBarThickness = 6  
+combatFrame.BackgroundTransparency = 1  
+combatFrame.Visible = true  
+  
+local utilFrame = Instance.new("Frame", contentFrame)  
+utilFrame.Size = UDim2.new(1,0,1,0)  
+utilFrame.BackgroundTransparency = 1  
+utilFrame.Visible = false  
+  
+tabCombatBtn.MouseButton1Click:Connect(function()  
+    combatFrame.Visible = true  
+    utilFrame.Visible = false  
+end)  
+tabUtilBtn.MouseButton1Click:Connect(function()  
+    combatFrame.Visible = false  
+    utilFrame.Visible = true  
+end)  
+  
+-- helper to create buttons/textboxes in frames  
+local function createButton(parent, text, posY)  
+    local btn = Instance.new("TextButton", parent)  
+    btn.Size = UDim2.new(1,-20,0,34)  
+    btn.Position = UDim2.new(0,10,0,posY)  
+    btn.Text = text  
+    btn.BackgroundColor3 = Color3.fromRGB(44,44,44)  
+    btn.TextColor3 = Color3.fromRGB(255,255,255)  
+    btn.Font = Enum.Font.Gotham  
+    btn.TextSize = 14  
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)  
+    return btn  
+end  
+local function createTextBox(parent, placeholder, posY, default)  
+    local box = Instance.new("TextBox", parent)  
+    box.Size = UDim2.new(1,-20,0,28)  
+    box.Position = UDim2.new(0,10,0,posY)  
+    box.PlaceholderText = placeholder  
+    box.Text = tostring(default)  
+    box.BackgroundColor3 = Color3.fromRGB(60,60,60)  
+    box.TextColor3 = Color3.fromRGB(255,255,255)  
+    box.Font = Enum.Font.Gotham  
+    box.TextSize = 14  
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0,6)  
+    return box  
+end  
+  
+-- ----------------------------  
+-- Insert ORIGINAL combat logic (kept intact)  
+-- ----------------------------  
+  
+-- Variables reused from original code  
+local killAura = false  
+local KillAuraBtn  
+local distance = 6  
+local v_u_1, v155, v156, v158, v159, v160, v163, v167, v_u_168, v58  
+  
+local function setupKillAura()  
+    pcall(function()  
+        v_u_1 = require(RS:WaitForChild("Core"))  
+        v155 = localPlayer:WaitForChild("Data"):WaitForChild("Character")  
+        v156 = RS.Characters:FindFirstChild(v155.Value):FindFirstChild("WallCombo")  
+        v158 = Vector3.new(7, 5, 7)  
+        v159 = CFrame.new(0, 0, 0)  
+        v160 = v_u_1.Get("Character", "FullCustomReplication").GetCFrame()  
+        v163 = localPlayer.Character  
+        v167 = {["Size"] = v158, ["Offset"] = v159, ["CustomValidation"] = function() return true end}  
+        v_u_168 = v_u_1.Get("Combat", "Hit").Box(nil, v163, v167)  
+        v58 = v156:GetAttribute("Interrupt")  
+    end)  
+end  
+  
+-- Keep original Run function name as in your code  
+function Run(p_u_7, p8, p_u_9, p10, ...)  
+    local v_u_11 = p_u_7 and p_u_7:FindFirstChild("Humanoid") or p_u_7  
+    local v_u_12 = p_u_7 and p_u_7:FindFirstChild("HumanoidRootPart") or p_u_7  
+    if p_u_7 and (v_u_11 and v_u_12) then  
+        local v_u_13 = p_u_7 == Players.LocalPlayer.Character  
+        local v_u_17 = p8  
+        v_u_1.Get("Combat", "Cancel").Init(v_u_17, p_u_9, p_u_7)  
+        v_u_1.Get("Combat", "Cancel").Set(v_u_17, p_u_9, p_u_7, "Timeout")  
+        local v_u_36 = { ... }  
+        task.spawn(function()  
+            v_u_1.Get("Cosmetics", "KillEmote").RunAfter(v_u_17, table.unpack({p_u_7, v_u_11, v_u_12, v_u_13, p_u_9, table.unpack(v_u_36)}))  
+        end)  
+    end  
+end  
+  
+local function toggleKillAura()  
+    if not v_u_1 then  
+        setupKillAura()  
+        if not v_u_1 then return warn("⚠️ Không đủ module để chạy Kill Aura") end  
+    end  
+    killAura = not killAura  
+    if KillAuraBtn then KillAuraBtn.Text = "Kill Aura: " .. (killAura and "ON" or "OFF") end  
+    if killAura then  
+        task.spawn(function()  
+            while killAura do  
+                local originPos = v160.Position  
+                local pos = originPos + v160.LookVector * distance  
+                for i = 1, 6 do  
+                    v_u_1.Library("Remote").Send("Ability", v156, 9e9, v58, v_u_168, pos)  
+                    Run(localPlayer.Character, v156, 9e9, v58, v_u_168, pos)  
+                end  
+                task.wait(0.01)  
+            end  
+        end)  
+    end  
+end  
+  
+-- Fly (kept unchanged)  
+local flyEnabled = false  
+local FlyBtn  
+local function toggleFly()  
+    flyEnabled = not flyEnabled  
+    if FlyBtn then FlyBtn.Text = "Fly: " .. (flyEnabled and "ON" or "OFF") end  
+    if flyEnabled then  
+        pcall(function()  
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()  
+        end)  
+    end  
+end  
+  
+-- Hitbox (kept unchanged)  
+local hitboxEnabled = false  
+local hitboxSize = 20  
+local oldBoxFunc  
+pcall(function()  
+    if core and core.Get and core.Get("Combat","Hit") then  
+        oldBoxFunc = core.Get("Combat","Hit").Box  
+    end  
+end)  
+local HitboxBtn  
+local function setHitbox(state)  
+    hitboxEnabled = state  
+    if HitboxBtn then HitboxBtn.Text = "Hitbox: " .. (state and "ON" or "OFF") end  
+    if core and oldBoxFunc then  
+        if state then  
+            core.Get("Combat","Hit").Box = function(_, target, data)  
+                return oldBoxFunc(nil, target, {Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)})  
+            end  
+        else  
+            core.Get("Combat","Hit").Box = oldBoxFunc  
+        end  
+    end  
+end  
+  
+-- Wall Combo (kept unchanged)  
+local wallComboEnabled = false  
+local WallBtn  
+local function toggleWallCombo()  
+    wallComboEnabled = not wallComboEnabled  
+    if WallBtn then WallBtn.Text = "Wall Combo: " .. (wallComboEnabled and "ON" or "OFF") end  
+  
+    local chars = RS:FindFirstChild("Characters")  
+    if not (core and chars and localPlayer:FindFirstChild("Data") and localPlayer.Data:FindFirstChild("Character")) then  
+        return warn("⚠️ Không đủ module để Wall Combo")  
+    end  
+    local function wallcombo()  
+        local head = localPlayer.Character and localPlayer.Character:FindFirstChild("Head")  
+        if not head then return end  
+        local res = core.Get("Combat","Hit").Box(nil, localPlayer.Character, {Size = Vector3.new(50,50,50)})  
+        if res then  
+            pcall(core.Get("Combat","Ability").Activate, chars[localPlayer.Data.Character.Value].WallCombo, res, head.Position + Vector3.new(0,0,2.5))  
+        end  
+    end  
+    if wallComboEnabled then  
+        RunService:BindToRenderStep("WallCombo", Enum.RenderPriority.Input.Value, wallcombo)  
+    else  
+        RunService:UnbindFromRenderStep("WallCombo")  
+    end  
+end  
+  
+-- ---------- Add Auto Block (with ON/OFF) ----------  
+local autoBlockEnabled = false  
+local BlockRemote = nil  
+pcall(function()  
+    BlockRemote = RS:WaitForChild("Remotes"):WaitForChild("Combat"):WaitForChild("Block")  
+end)  
+  
+local function enableBlockOnce()  
+    if BlockRemote then  
+        pcall(function()  
+            BlockRemote:FireServer(true)  
+        end)  
+    end  
+end  
+  
+-- Auto Block loop (runs only when enabled)  
+task.spawn(function()  
+    while true do  
+        task.wait(0.05)  
+        if autoBlockEnabled then  
+            local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()  
+            local success, isBlocking = pcall(function()  
+                return character:GetAttribute("IsBlocking")  
+            end)  
+            if success and not isBlocking then  
+                enableBlockOnce()  
+            end  
+        end  
+    end  
+end)  
+  
+-- ---------- Dash no-cooldown (TextBox control, 0-100) ----------  
+-- default value 1 (like original)  
+local function setDashCooldownValue(v)  
+    local success, settings = pcall(function()  
+        return RS.Settings.Cooldowns  
+    end)  
+    if success and settings and settings:FindFirstChild("Dash") then  
+        local clamped = math.clamp(math.floor(v), 0, 100)  
+        settings.Dash.Value = clamped  
+    end  
+end  
+  
+-- ---------- Combat UI placements inside combatFrame ----------  
+-- We'll place buttons sequentially (y positions)  
+local y = 6  
+KillAuraBtn = createButton(combatFrame, "Kill Aura: OFF", y); y = y + 44  
+-- Kill Aura Range TextBox  
+local killRangeBox = createTextBox(combatFrame, "Kill Aura Range (number)", y, distance); y = y + 36  
+killRangeBox.FocusLost:Connect(function(enter)  
+    if enter then  
+        local n = tonumber(killRangeBox.Text)  
+        if n then distance = n else killRangeBox.Text = tostring(distance) end  
+    end  
+end)  
+  
+HitboxBtn = createButton(combatFrame, "Hitbox: OFF", y); y = y + 44  
+-- Hitbox size textbox  
+local hitboxBox = createTextBox(combatFrame, "Hitbox Size (number)", y, hitboxSize); y = y + 36  
+hitboxBox.FocusLost:Connect(function(enter)  
+    if enter then  
+        local n = tonumber(hitboxBox.Text)  
+        if n then hitboxSize = n; if hitboxEnabled then setHitbox(true) end else hitboxBox.Text = tostring(hitboxSize) end  
+    end  
+end)  
+  
+WallBtn = createButton(combatFrame, "Wall Combo: OFF", y); y = y + 44  
+FlyBtn = createButton(combatFrame, "Fly: OFF", y); y = y + 44  
+  
+-- Auto Block toggle  
+local autoBlockBtn = createButton(combatFrame, "Auto Block: OFF", y); y = y + 44  
+autoBlockBtn.MouseButton1Click:Connect(function()  
+    autoBlockEnabled = not autoBlockEnabled  
+    autoBlockBtn.Text = "Auto Block: " .. (autoBlockEnabled and "ON" or "OFF")  
+end)  
+  
+-- Dash cooldown text + box  
+local dashLabel = Instance.new("TextLabel", combatFrame)  
+dashLabel.Size = UDim2.new(1,-20,0,20)  
+dashLabel.Position = UDim2.new(0,10,0,y)  
+dashLabel.BackgroundTransparency = 1  
+dashLabel.Text = "Dash Cooldown (0-100):"  
+dashLabel.TextColor3 = Color3.fromRGB(220,220,220)  
+dashLabel.Font = Enum.Font.Gotham  
+dashLabel.TextSize = 13  
+y = y + 24  
+  
+local dashBox = createTextBox(combatFrame, "Dash cooldown value (0-100)", y, 1); y = y + 36  
+dashBox.FocusLost:Connect(function(enter)  
+    if enter then  
+        local n = tonumber(dashBox.Text)  
+        if n then  
+            local clamped = math.clamp(math.floor(n), 0, 100)  
+            dashBox.Text = tostring(clamped)  
+            setDashCooldownValue(clamped)  
+        else  
+            dashBox.Text = tostring(1)  
+            setDashCooldownValue(1)  
+        end  
+    end  
+end)  
+  
+-- Buttons callbacks for earlier features (connect after created)  
+KillAuraBtn.MouseButton1Click:Connect(function()  
+    toggleKillAura()  
+    KillAuraBtn.Text = "Kill Aura: " .. (killAura and "ON" or "OFF")  
+end)  
+HitboxBtn.MouseButton1Click:Connect(function()  
+    setHitbox(not hitboxEnabled)  
+end)  
+WallBtn.MouseButton1Click:Connect(function()  
+    toggleWallCombo()  
+end)  
+FlyBtn.MouseButton1Click:Connect(function()  
+    toggleFly()  
+end)  
+  
+-- Ensure combatFrame canvas size increases if needed  
+combatFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(function() end)  
+-- We'll update CanvasSize based on content automatically:  
+local function updateCombatCanvas()  
+    local maxY = 0  
+    for _,v in ipairs(combatFrame:GetChildren()) do  
+        if v:IsA("GuiObject") and v.Visible then  
+            local bottom = v.Position.Y.Offset + v.Size.Y.Offset  
+            if bottom > maxY then maxY = bottom end  
+        end  
+    end  
+    combatFrame.CanvasSize = UDim2.new(0,0,0,math.max(maxY + 24, combatFrame.AbsoluteSize.Y))  
+end  
+-- call periodically to adapt  
+task.spawn(function()  
+    while true do  
+        updateCombatCanvas()  
+        task.wait(0.4)  
+    end  
+end)  
+  
+-- ----------------------------  
+-- Auto Farm & Emote Spam (original code kept intact)  
+-- ----------------------------  
+  
+-- Auto Farm GUI creation function (kept logic)  
+local autoFarmFrame -- will be created inside utilFrame when user opens  
+local function openAutoFarmGui()  
+    if autoFarmFrame and autoFarmFrame.Parent then  
+        autoFarmFrame.Visible = true  
+        return  
+    end  
+  
+    autoFarmFrame = Instance.new("Frame", utilFrame)  
+    autoFarmFrame.Size = UDim2.new(0.92,0,0.58,0)  
+    autoFarmFrame.Position = UDim2.new(0.04,0,0.02,0)  
+    autoFarmFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)  
+    Instance.new("UICorner", autoFarmFrame).CornerRadius = UDim.new(0,6)  
+  
+    local titleF = Instance.new("TextLabel", autoFarmFrame)  
+    titleF.Size = UDim2.new(1,-10,0,28)  
+    titleF.Position = UDim2.new(0,5,0,5)  
+    titleF.BackgroundTransparency = 1  
+    titleF.Text = "KFC Auto Farm"  
+    titleF.TextColor3 = Color3.fromRGB(255,255,255)  
+    titleF.Font = Enum.Font.GothamBold  
+    titleF.TextSize = 16  
+  
+    local closeF = Instance.new("TextButton", autoFarmFrame)  
+    closeF.Size = UDim2.new(0,26,0,24)  
+    closeF.Position = UDim2.new(1,-34,0,4)  
+    closeF.Text = "X"  
+    closeF.BackgroundColor3 = Color3.fromRGB(180,50,50)  
+    closeF.TextColor3 = Color3.fromRGB(255,255,255)  
+    Instance.new("UICorner", closeF).CornerRadius = UDim.new(0,6)  
+    closeF.MouseButton1Click:Connect(function() autoFarmFrame.Visible = false end)  
+  
+    local ToggleButton = Instance.new("TextButton", autoFarmFrame)  
+    ToggleButton.Size = UDim2.new(0.8, 0, 0, 32)  
+    ToggleButton.Position = UDim2.new(0.1, 0, 0, 45)  
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)  
+    ToggleButton.Text = "START"  
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)  
+    ToggleButton.Font = Enum.Font.SourceSansBold  
+    ToggleButton.TextSize = 18  
+    Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0,6)  
+  
+    local DistBox = Instance.new("TextBox", autoFarmFrame)  
+    DistBox.Position = UDim2.new(0.1, 0, 0, 85)  
+    DistBox.Size = UDim2.new(0.8, 0, 0, 26)  
+    DistBox.Text = "2"  
+    DistBox.BackgroundColor3 = Color3.fromRGB(70,70,70)  
+    DistBox.TextColor3 = Color3.fromRGB(255,255,255)  
+    DistBox.Font = Enum.Font.Gotham  
+    DistBox.TextSize = 14  
+    Instance.new("UICorner", DistBox).CornerRadius = UDim.new(0,6)  
+  
+    local TargetLabel = Instance.new("TextLabel", autoFarmFrame)  
+    TargetLabel.Position = UDim2.new(0.05, 0, 0, 118)  
+    TargetLabel.Size = UDim2.new(0.9, 0, 0, 22)  
+    TargetLabel.Text = "Mục tiêu: Chưa chọn"  
+    TargetLabel.TextColor3 = Color3.fromRGB(255,255,255)  
+    TargetLabel.BackgroundTransparency = 1  
+    TargetLabel.Font = Enum.Font.SourceSans  
+  
+    local teleportEnabled = true  
+    local currentTarget  
+    local running = false  
+  
+    local function getNearestPlayer(maxDist)  
+        local nearest, dist = nil, maxDist or math.huge  
+        for _, p in pairs(Players:GetPlayers()) do  
+            if p ~= localPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then  
+                local humanoid = p.Character:FindFirstChildOfClass("Humanoid")  
+                if humanoid and humanoid.Health > 0 then  
+                    local hrp = p.Character.HumanoidRootPart  
+                    local myhrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")  
+                    if myhrp then  
+                        local d = (myhrp.Position - hrp.Position).Magnitude  
+                        if d < dist then  
+                            dist = d  
+                            nearest = p  
+                        end  
+                    end  
+                end  
+            end  
+        end  
+        return nearest  
+    end  
+  
+    local function tpToTarget(target, dist)  
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then  
+            local myChar = localPlayer.Character  
+            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")  
+            local targetHRP = target.Character.HumanoidRootPart  
+            if myHRP then  
+                local dir = (targetHRP.Position - myHRP.Position).Unit  
+                myHRP.CFrame = CFrame.new(targetHRP.Position - dir * dist, targetHRP.Position)  
+            end  
+        end  
+    end  
+  
+    local function farmLoop()  
+        if not currentTarget or not currentTarget.Character then  
+            currentTarget = getNearestPlayer(1000)  
+        end  
+        if currentTarget and currentTarget.Character then  
+            TargetLabel.Text = "Mục tiêu: " .. currentTarget.Name  
+            if teleportEnabled then  
+                tpToTarget(currentTarget, tonumber(DistBox.Text) or 2)  
+            end  
+            local head = localPlayer.Character and localPlayer.Character:FindFirstChild("Head")  
+            if head then  
+                local res = nil  
+                pcall(function()  
+                    res = core.Get("Combat","Hit").Box(nil, localPlayer.Character, {Size = Vector3.new(50,50,50)})  
+                end)  
+                if res then  
+                    local chars = RS:WaitForChild("Characters")  
+                    local charData = localPlayer.Data.Character.Value  
+                    local ability = chars[charData] and chars[charData].WallCombo  
+                    if ability then  
+                        pcall(core.Get("Combat","Ability").Activate, ability, res, head.Position + Vector3.new(0,0,2.5))  
+                    end  
+                end  
+            end  
+        else  
+            TargetLabel.Text = "Mục tiêu: Không có"  
+        end  
+    end  
+  
+    ToggleButton.MouseButton1Click:Connect(function()  
+        running = not running  
+        if running then  
+            ToggleButton.Text = "STOP"  
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(0,150,0)  
+            RunService:BindToRenderStep("AutoFarm", Enum.RenderPriority.Input.Value, farmLoop)  
+        else  
+            ToggleButton.Text = "START"  
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(150,0,0)  
+            TargetLabel.Text = "Mục tiêu: Chưa chọn"  
+            RunService:UnbindFromRenderStep("AutoFarm")  
+        end  
+    end)  
+end  
+  
+-- Button on Utility tab to open AutoFarm  
+local openAFBtn = Instance.new("TextButton", utilFrame)  
+openAFBtn.Size = UDim2.new(0.46, -12, 0, 36)  
+openAFBtn.Position = UDim2.new(0.03, 0, 0.64, 0)  
+openAFBtn.Text = "Open Auto Farm"  
+openAFBtn.BackgroundColor3 = Color3.fromRGB(44,44,44)  
+openAFBtn.TextColor3 = Color3.fromRGB(255,255,255)  
+openAFBtn.Font = Enum.Font.Gotham  
+openAFBtn.TextSize = 14  
+Instance.new("UICorner", openAFBtn).CornerRadius = UDim.new(0,6)  
+openAFBtn.MouseButton1Click:Connect(openAutoFarmGui)  
+  
+-- ---------- Emote Spam (original code kept) ----------  
+local killEmotes = {  
+    "Impostor","Laser Eyes","Mistletoe","Naughty List","Neck Snap","Orthax",  
+    "Pollen Overload","Possession","Rudolph's Revenge","Samurai Slash","Santamation",  
+    "Sawblade Execution","Scythe Sweep","Shadow Ambush","Shattered","Skull Crush",  
+    "Slice And Dice","Soul Harvest","Spectral Strike","Spider Feast","Spirit Break",  
+    "Stakeout","Stone Slam","Storm Breaker","Suffocate","Sunken Drag","Supreme Cut",  
+    "Sword Frenzy","Titan Fist","Torment","Tornado Execution","Twilight End",  
+    "Ultra Slash","Umbra Grab","Unholy Binding","Vampire","Void Implosion",  
+    "Wrath Slam","Zeus Strike"  
+}  
+  
+-- Emote UI within utilFrame  
+local emoteBoxBg = Instance.new("Frame", utilFrame)  
+emoteBoxBg.Size = UDim2.new(0.92,0,0.52,0)  
+emoteBoxBg.Position = UDim2.new(0.04,0,0.02,0)  
+emoteBoxBg.BackgroundColor3 = Color3.fromRGB(30,30,30)  
+Instance.new("UICorner", emoteBoxBg).CornerRadius = UDim.new(0,6)  
+  
+local emoteTitle = Instance.new("TextLabel", emoteBoxBg)  
+emoteTitle.Size = UDim2.new(1,-10,0,28)  
+emoteTitle.Position = UDim2.new(0,5,0,5)  
+emoteTitle.BackgroundTransparency = 1  
+emoteTitle.Text = "Emote Spam"  
+emoteTitle.TextColor3 = Color3.fromRGB(255,255,255)  
+emoteTitle.Font = Enum.Font.GothamBold  
+emoteTitle.TextSize = 16  
+  
+local emoteClose = Instance.new("TextButton", emoteBoxBg)  
+emoteClose.Size = UDim2.new(0,26,0,24)  
+emoteClose.Position = UDim2.new(1,-34,0,4)  
+emoteClose.Text = "X"  
+emoteClose.BackgroundColor3 = Color3.fromRGB(180,50,50)  
+emoteClose.TextColor3 = Color3.fromRGB(255,255,255)  
+Instance.new("UICorner", emoteClose).CornerRadius = UDim.new(0,6)  
+emoteClose.MouseButton1Click:Connect(function() emoteBoxBg.Visible = false end)  
+  
+local dropdown = Instance.new("TextButton", emoteBoxBg)  
+dropdown.Size = UDim2.new(0.9,0,0,30)  
+dropdown.Position = UDim2.new(0.05,0,0,40)  
+dropdown.Text = "Select Emote"  
+dropdown.BackgroundColor3 = Color3.fromRGB(60,60,60)  
+dropdown.TextColor3 = Color3.new(1,1,1)  
+Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,6)  
+  
+local scroll = Instance.new("ScrollingFrame", emoteBoxBg)  
+scroll.Size = UDim2.new(0.9,0,0,120)  
+scroll.Position = UDim2.new(0.05,0,0,80)  
+scroll.Visible = false  
+scroll.CanvasSize = UDim2.new(0,0,0,#killEmotes*25)  
+Instance.new("UICorner", scroll).CornerRadius = UDim.new(0,6)  
+  
+for i,name in ipairs(killEmotes) do  
+    local b = Instance.new("TextButton", scroll)  
+    b.Size = UDim2.new(1,0,0,25)  
+    b.Position = UDim2.new(0,0,0,(i-1)*25)  
+    b.Text = name  
+    b.BackgroundColor3 = Color3.fromRGB(80,80,80)  
+    b.TextColor3 = Color3.new(1,1,1)  
+    b.MouseButton1Click:Connect(function()  
+        dropdown.Text = name  
+        scroll.Visible = false  
+    end)  
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)  
+end  
+  
+dropdown.MouseButton1Click:Connect(function()  
+    scroll.Visible = not scroll.Visible  
+end)  
+  
+local startSelected = Instance.new("TextButton", emoteBoxBg)  
+startSelected.Size = UDim2.new(0.42,0,0,34)  
+startSelected.Position = UDim2.new(0.04,0,0,210)  
+startSelected.Text = "Start Selected"  
+startSelected.BackgroundColor3 = Color3.fromRGB(60,60,60)  
+startSelected.TextColor3 = Color3.new(1,1,1)  
+Instance.new("UICorner", startSelected).CornerRadius = UDim.new(0,6)  
+  
+local startRandom = Instance.new("TextButton", emoteBoxBg)  
+startRandom.Size = UDim2.new(0.42,0,0,34)  
+startRandom.Position = UDim2.new(0.54,0,0,210)  
+startRandom.Text = "Start Random"  
+startRandom.BackgroundColor3 = Color3.fromRGB(60,60,60)  
+startRandom.TextColor3 = Color3.new(1,1,1)  
+Instance.new("UICorner", startRandom).CornerRadius = UDim.new(0,6)  
+  
+local stopBtn = Instance.new("TextButton", emoteBoxBg)  
+stopBtn.Size = UDim2.new(0.92,0,0,34)  
+stopBtn.Position = UDim2.new(0.04,0,0,255)  
+stopBtn.Text = "STOP"  
+stopBtn.BackgroundColor3 = Color3.fromRGB(150,0,0)  
+stopBtn.TextColor3 = Color3.new(1,1,1)  
+Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0,6)  
+  
+local emoteRunning = false  
+local emoteMode = nil  
+local emoteSelected = nil  
+  
+local function getRoot(char) return char and char:FindFirstChild("HumanoidRootPart") end  
+local function useEmote(name)  
+    local emoteModule = RS:WaitForChild("Cosmetics"):WaitForChild("KillEmote"):FindFirstChild(name)  
+    local myRoot = getRoot(localPlayer.Character)  
+    if not myRoot or not emoteModule then return end  
+    local target = nil  
+    local dist = math.huge  
+    for _,p in ipairs(Players:GetPlayers()) do  
+        if p ~= localPlayer and p.Character and getRoot(p.Character) then  
+            local d = (myRoot.Position - getRoot(p.Character).Position).Magnitude  
+            if d < dist then dist = d; target = p.Character end  
+        end  
+    end  
+    if target then  
+        pcall(function()  
+            core.Get("Combat","Ability").Activate(emoteModule,target)  
+        end)  
+    end  
+end  
+  
+RunService.RenderStepped:Connect(function()  
+    if emoteRunning then  
+        if emoteMode == "selected" and emoteSelected then  
+            useEmote(emoteSelected)  
+        elseif emoteMode == "random" then  
+            useEmote(killEmotes[math.random(1,#killEmotes)])  
+        end  
+    end  
+end)  
+  
+startSelected.MouseButton1Click:Connect(function()  
+    if dropdown.Text ~= "Select Emote" then  
+        emoteSelected = dropdown.Text  
+        emoteRunning = true  
+        emoteMode = "selected"  
+    end  
+end)  
+startRandom.MouseButton1Click:Connect(function()  
+    emoteRunning = true  
+    emoteMode = "random"  
+end)  
+stopBtn.MouseButton1Click:Connect(function()  
+    emoteRunning = false  
+    emoteMode = nil  
+end)  
+  
+-- Additional Utility buttons (toggle visibility)  
+local toggleEmoteAreaBtn = Instance.new("TextButton", utilFrame)  
+toggleEmoteAreaBtn.Size = UDim2.new(0.46, -12, 0, 36)  
+toggleEmoteAreaBtn.Position = UDim2.new(0.03, 0, 0.56, 0)  
+toggleEmoteAreaBtn.Text = "Toggle Emote"  
+toggleEmoteAreaBtn.BackgroundColor3 = Color3.fromRGB(44,44,44)  
+toggleEmoteAreaBtn.TextColor3 = Color3.fromRGB(255,255,255)  
+toggleEmoteAreaBtn.Font = Enum.Font.Gotham  
+toggleEmoteAreaBtn.TextSize = 14  
+Instance.new("UICorner", toggleEmoteAreaBtn).CornerRadius = UDim.new(0,6)  
+toggleEmoteAreaBtn.MouseButton1Click:Connect(function()  
+    emoteBoxBg.Visible = not emoteBoxBg.Visible  
+    if autoFarmFrame then autoFarmFrame.Visible = false end  
+end)  
+  
+-- ensure visible initially  
+emoteBoxBg.Visible = true  
+  
+-- Print loaded  
+print("[KFC HUB] Merged script loaded. Combat + Utility (Auto Farm & Emote).")  
+  
+-- End of script  
